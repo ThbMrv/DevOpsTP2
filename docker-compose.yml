@@ -1,0 +1,149 @@
+services:
+  db_mongo:
+    build:
+      context: .
+      dockerfile: mongo/Dockerfile
+    container_name: db_mongo
+    restart: on-failure
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_DB: ${MONGO_DB}
+      MONGO_APP_USER: ${MONGO_APP_USER}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'mongosh --quiet --host localhost --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''const dbRef = db.getSiblingDB("''"$$MONGO_DB"''"); const count = dbRef.posts.countDocuments(); if (count !== 5) { quit(1); }''',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 25s
+    networks:
+      - backend
+
+  db_mysql:
+    image: mysql:8.4
+    container_name: db_mysql
+    restart: on-failure
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ./Migrations:/docker-entrypoint-initdb.d:ro
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'mysql --protocol=TCP --host=localhost --user=$$MYSQL_USER --password=$$MYSQL_PASSWORD --database=$$MYSQL_DATABASE --skip-column-names --execute "SELECT COUNT(*) FROM utilisateurs;" | grep -x 4',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 25s
+    networks:
+      - backend
+
+  admin_mongo:
+    image: mongo-express:1.0.2-20
+    container_name: admin_mongo
+    restart: on-failure
+    depends_on:
+      db_mongo:
+        condition: service_healthy
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@db_mongo:27017/
+      ME_CONFIG_BASICAUTH: "false"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "require(''http'').get(''http://127.0.0.1:8081/'', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on(''error'', () => process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    ports:
+      - "8081:8081"
+    networks:
+      - backend
+
+  admin_mysql:
+    image: adminer:5.3.0
+    container_name: admin_mysql
+    restart: on-failure
+    depends_on:
+      db_mysql:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'php -r "exit(file_get_contents(''http://127.0.0.1:8080/'') === false ? 1 : 0);"',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: api
+    restart: on-failure
+    depends_on:
+      db_mongo:
+        condition: service_healthy
+      db_mysql:
+        condition: service_healthy
+    environment:
+      MONGO_HOST: db_mongo
+      MONGO_PORT: ${MONGO_PORT}
+      MONGO_DB: ${MONGO_DB}
+      MONGO_COLLECTION: ${MONGO_COLLECTION}
+      MONGO_APP_USER: ${MONGO_APP_USER}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD}
+      MONGO_AUTH_SOURCE: ${MONGO_DB}
+      MYSQL_HOST: db_mysql
+      MYSQL_PORT: ${MYSQL_PORT}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ./api:/app:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl --fail --silent http://localhost:8000/posts && curl --fail --silent http://localhost:8000/users",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    ports:
+      - "8000:8000"
+    networks:
+      - backend
+
+volumes:
+  mongo_data:
+  mysql_data:
+
+networks:
+  backend:
+    driver: bridge
