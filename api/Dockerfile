@@ -2,9 +2,8 @@ FROM python:3.12.13-alpine3.23
 
 WORKDIR /app
 
-# Mise à jour explicite des paquets pour corriger les vulnérabilités
-RUN apk update && apk upgrade --no-cache && apk add --no-cache --upgrade curl
-RUN pip install --upgrade pip && pip install --upgrade mysql-connector-python fastapi uvicorn pymongo
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir mysql-connector-python fastapi uvicorn pymongo
 
 EXPOSE 8000
 

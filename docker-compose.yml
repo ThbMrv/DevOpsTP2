@@ -129,7 +129,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl --fail --silent http://localhost:8000/posts && curl --fail --silent http://localhost:8000/users",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/posts'); urllib.request.urlopen('http://localhost:8000/users')\"",
         ]
       interval: 10s
       timeout: 10s
