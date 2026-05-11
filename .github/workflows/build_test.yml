@@ -1,7 +1,7 @@
 name: Build and test Application
 
 on:
-  #Triggers the workflow on push or pull request events but only for the main branch actions hub new docker secret
+  #Triggers the workflow on push or pull request events but only for the main branch
   push:
     branches: [main]
   pull_request:
@@ -42,3 +42,12 @@ jobs:
           file: mongo/Dockerfile
           only-severities: critical, high
           exit-code: false
+
+  docker-compose:
+    needs: build_test
+    runs-on: ubuuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Build the stack
+        run: docker compose up -d
