@@ -41,12 +41,12 @@ services:
       test:
         [
           "CMD-SHELL",
-          'mysqladmin --protocol=TCP --host=localhost --user=root --password=$$MYSQL_ROOT_PASSWORD ping',
+          'mysql --user=root --password=$$MYSQL_ROOT_PASSWORD --execute "SELECT 1;" | grep -x 1',
         ]
       interval: 10s
       timeout: 10s
       retries: 10
-      start_period: 40s
+      start_period: 60s
     networks:
       - backend
 
