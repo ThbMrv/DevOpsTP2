@@ -1,8 +1,6 @@
 services:
   db_mongo:
-    build:
-      context: .
-      dockerfile: mongo/Dockerfile
+    image: mongo:8.0.21-noble
     container_name: db_mongo
     restart: on-failure
     environment:

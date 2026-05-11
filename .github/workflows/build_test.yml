@@ -1,5 +1,8 @@
 name: Build and test Application
 
+permissions:
+  contents: read
+
 on:
   #Triggers the workflow on push or pull request events but only for the main branch
   push:
@@ -12,19 +15,15 @@ jobs:
     #The type of runner that the job will run on
     runs-on: ubuntu-latest
     env:
-      DOCKERHUB_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
       API_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/devopstp2-api:1.0
-      MONGO_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/devopstp2-mongo:1.0
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Build image for python
         run: docker build --pull -t "$API_IMAGE" -f api/Dockerfile .
-      - name: Build image for Mongo
-        run: docker build --pull -t "$MONGO_IMAGE" -f mongo/Dockerfile .
       - name: Login to Docker Hub
         if: github.event_name == 'push'
         uses: docker/login-action@v4
@@ -39,30 +38,18 @@ jobs:
           file: api/Dockerfile
           only-severities: critical, high
           exit-code: false
-      - name: Docker Scout Scan
-        uses: docker/scout-action@v1
-        with:
-          command: cves, recommendations
-          image: ${{ env.MONGO_IMAGE }}
-          file: mongo/Dockerfile
-          only-severities: critical, high
-          exit-code: false
       - name: Push Python image to Docker Hub
         if: github.event_name == 'push'
         run: docker push "$API_IMAGE"
-
-      - name: Push Mongo image to Docker Hub
-        if: github.event_name == 'push'
-        run: docker push "$MONGO_IMAGE"
 
   docker-compose:
     needs: build_test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Build the stack
-        run: docker compose up -d
+        run: docker compose up -d --build --wait
         env:
           MONGO_ROOT_USER: ${{ secrets.MONGO_ROOT_USER }}
           MONGO_ROOT_PASSWORD: ${{ secrets.MONGO_ROOT_PASSWORD }}
@@ -77,3 +64,9 @@ jobs:
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
           MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
           MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
+      - name: Show compose status on failure
+        if: failure()
+        run: docker compose ps
+      - name: Show compose logs on failure
+        if: failure()
+        run: docker compose logs --no-color
