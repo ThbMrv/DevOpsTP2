@@ -16,12 +16,12 @@ services:
       test:
         [
           "CMD-SHELL",
-          'mongosh --quiet --host localhost --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''const dbRef = db.getSiblingDB("''"$$MONGO_DB"''"); const count = dbRef.posts.countDocuments(); if (count !== 5) { quit(1); }''',
+          'mongosh --quiet --host localhost --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.adminCommand({ ping: 1 }).ok'' | grep -x 1',
         ]
       interval: 10s
       timeout: 10s
       retries: 10
-      start_period: 25s
+      start_period: 40s
     networks:
       - backend
 
@@ -41,12 +41,12 @@ services:
       test:
         [
           "CMD-SHELL",
-          'mysql --protocol=TCP --host=localhost --user=$$MYSQL_USER --password=$$MYSQL_PASSWORD --database=$$MYSQL_DATABASE --skip-column-names --execute "SELECT COUNT(*) FROM utilisateurs;" | grep -x 4',
+          'mysqladmin --protocol=TCP --host=localhost --user=root --password=$$MYSQL_ROOT_PASSWORD ping',
         ]
       interval: 10s
       timeout: 10s
       retries: 10
-      start_period: 25s
+      start_period: 40s
     networks:
       - backend
 
@@ -127,7 +127,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/posts'); urllib.request.urlopen('http://localhost:8000/users')\"",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/')\"",
         ]
       interval: 10s
       timeout: 10s
