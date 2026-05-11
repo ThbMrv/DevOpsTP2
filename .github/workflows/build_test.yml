@@ -1,11 +1,11 @@
 name: Build and test Application
 
 on:
-#Triggers the workflow on push or pull request events but only for the main branch
+  #Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 jobs:
   build_test:
@@ -21,4 +21,3 @@ jobs:
         run: docker build -t devopstp2-api:1.0 -f api/Dockerfile .
       - name: Build image for Mongo
         run: docker build -t devopstp2-mongo:1.0 -f mongo/Dockerfile .
-
