@@ -2,7 +2,8 @@ FROM python:3.12-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache curl
+# Mise à jour explicite de curl pour corriger la vulnérabilité
+RUN apk add --no-cache --upgrade curl
 RUN pip install mysql-connector-python fastapi uvicorn pymongo
 
 EXPOSE 8000
